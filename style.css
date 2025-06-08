@@ -1,58 +1,104 @@
 /* style.css */
 
+/* Google Fit-like Color Palette */
 :root {
-    --primary-color: #007aff; /* Apple Blue */
-    --secondary-color: #34c759; /* Apple Green (for success/positive trends) */
-    --danger-color: #ff3b30; /* Apple Red (for delete) */
-    --warning-color: #ffcc00; /* Apple Yellow (for alerts) */
-    --background-color: #f2f2f7; /* Light gray background */
-    --card-background: #ffffff; /* Card white background */
-    --text-color: #1c1c1e; /* Dark text */
-    --secondary-text-color: #636366; /* Lighter text */
-    --border-color: #e5e5ea; /* Light border */
-    --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
-    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --card-radius: 12px;
+    --primary-color: #4285F4; /* Google Blue */
+    --secondary-color: #34A853; /* Google Green */
+    --danger-color: #EA4335; /* Google Red */
+    --warning-color: #FBBC04; /* Google Yellow */
+    --background-color: #F8F9FA; /* Light Gray Background */
+    --card-background: #FFFFFF; /* White Card Background */
+    --text-color: #202124; /* Dark Gray Text */
+    --secondary-text-color: #5F6368; /* Medium Gray Text */
+    --border-color: #DADCE0; /* Light Gray Border */
+    --shadow-light: 0 1px 2px rgba(60, 64, 67, 0.1), 0 1px 3px rgba(60, 64, 67, 0.15); /* Subtle Google shadow */
+    --shadow-medium: 0 3px 6px rgba(60, 64, 67, 0.1), 0 4px 8px rgba(60, 64, 67, 0.15);
+    --card-radius: 8px; /* Slightly less rounded for a crisp look */
+    --navbar-height: 60px; /* Bottom navigation bar height */
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-family: 'Roboto', 'Noto Sans JP', sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     background-color: var(--background-color);
     color: var(--text-color);
     line-height: 1.6;
     margin: 0;
-    padding: 20px 0;
+    padding-bottom: var(--navbar-height); /* Padding for bottom navigation */
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: column;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
-    max-width: 768px; /* iPhone Pro Max程度の幅 */
+    max-width: 768px; /* Standard mobile app width */
     width: 100%;
-    padding: 0 15px; /* 左右の余白 */
-    box-sizing: border-box;
+    margin: 0 auto;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
 }
 
-h1 {
-    font-size: 34px; /* ヘルスケアのトップタイトル風 */
-    font-weight: 700;
-    text-align: left; /* 左寄せ */
-    margin-bottom: 25px;
-    padding: 0 5px; /* コンテナのパディングと合わせる */
+/* Header */
+header {
+    background-color: var(--card-background);
+    box-shadow: var(--shadow-light);
+    padding: 15px 20px; /* More padding for a softer look */
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px; /* Material Design App Bar height */
+}
+
+header h1 {
+    font-size: 24px; /* Larger header title */
+    font-weight: 500; /* Roboto Medium */
     color: var(--text-color);
+    margin: 0;
+    text-align: center;
 }
 
+/* Main Content Area */
+main.screen-content {
+    padding: 20px 15px; /* Consistent padding for content */
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+/* Screen Sections */
+.screen {
+    display: none;
+    margin-bottom: 20px; /* Space between sections */
+}
+
+.screen.active {
+    display: block;
+}
+
+/* Headings within screens */
 h2 {
-    font-size: 22px; /* カード内のタイトル */
-    font-weight: 600;
-    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: 500;
     color: var(--text-color);
-    text-align: left; /* 左寄せ */
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-left: 5px; /* Slight indent for visual alignment */
+}
+h3 {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-color);
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-left: 5px;
 }
 
-/* カード共通スタイル */
+/* Card Styles */
 .card {
     background-color: var(--card-background);
     border-radius: var(--card-radius);
@@ -61,344 +107,605 @@ h2 {
     box-shadow: var(--shadow-light);
 }
 
-/* 最新の記録サマリー */
-.summary-card h2 {
-    margin-bottom: 15px;
+/* Summary Card (Latest Records, Daily Cost) */
+.summary-card .summary-details p {
+    font-size: 16px;
+    margin: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--secondary-text-color);
+}
+.summary-card .summary-details p strong {
+    color: var(--text-color);
+    font-size: 18px;
+    font-weight: 700;
+}
+#dailyCostSummary p strong { /* Specific strong for daily cost */
+    color: var(--primary-color);
 }
 
-.summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* 画面幅に応じて調整 */
-    gap: 15px;
-}
-
-.summary-item {
-    background-color: var(--background-color); /* サブ背景色 */
-    border-radius: 8px;
-    padding: 15px;
-    text-align: center;
+/* Form Styles */
+.form-card form {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    gap: 15px; /* Spacing between input groups */
+    margin-bottom: 0; /* Remove default form margin */
+    padding: 0; /* Card handles padding */
+    background-color: transparent; /* Card handles background */
+    border-radius: 0; /* Card handles border-radius */
 }
 
-.summary-label {
-    font-size: 14px;
-    color: var(--secondary-text-color);
-    margin-bottom: 5px;
+.input-group {
+    margin-bottom: 0; /* Reset default form-group margin */
 }
 
-.summary-value {
-    font-size: 28px; /* 大きめの数値 */
-    font-weight: 700;
-    color: var(--primary-color); /* アクセントカラー */
-}
-
-.summary-unit {
-    font-size: 16px;
-    color: var(--secondary-text-color);
-    margin-top: 2px;
-}
-
-/* 記録入力フォーム */
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
+.input-group label {
     display: block;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--secondary-text-color);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
-.form-group input[type="date"],
-.form-group input[type="number"],
-.form-group input[type="text"],
-.form-group select {
+.input-group input[type="date"],
+.input-group input[type="number"],
+.input-group input[type="text"],
+.input-group select {
     width: 100%;
-    padding: 12px;
+    padding: 12px 14px; /* More horizontal padding */
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 17px;
+    border-radius: 4px; /* Slightly less rounded inputs */
+    font-size: 16px;
     color: var(--text-color);
     box-sizing: border-box;
-    -webkit-appearance: none; /* iOS Safariのデフォルトスタイルをリセット */
+    -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
+    background-color: var(--background-color); /* Input background */
 }
 
-.form-group input:focus,
-.form-group select:focus {
+.input-group input:focus,
+.input-group select:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25);
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.25); /* Focus shadow */
 }
 
-/* ボタン */
+/* Checkbox Group */
+.checkbox-group {
+    background-color: var(--background-color);
+    border-radius: 8px;
+    padding: 10px 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.checkbox-group p {
+    width: 100%;
+    font-weight: 500;
+    color: var(--secondary-text-color);
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 15px;
+    color: var(--text-color);
+    font-weight: normal;
+    margin-bottom: 0;
+}
+
+.checkbox-group input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 18px; /* Slightly smaller checkbox */
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-radius: 3px;
+    margin-right: 10px;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.checkbox-group input[type="checkbox"]:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkbox-group input[type="checkbox"]:checked::after {
+    content: '✔';
+    color: white;
+    font-size: 12px; /* Smaller checkmark */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.checkbox-group label:has(input[type="checkbox"]:checked) {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.25);
+}
+
+/* Buttons */
 .button {
     display: block;
     width: 100%;
-    padding: 14px 20px;
+    padding: 12px 18px; /* Consistent padding */
     border: none;
-    border-radius: 10px; /* 少し大きめの角丸 */
-    font-size: 18px;
-    font-weight: 600;
+    border-radius: 24px; /* Pill-shaped buttons */
+    font-size: 16px;
+    font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s ease, opacity 0.2s ease;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
     text-align: center;
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
+    display: flex; /* For icon buttons */
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* Space between icon and text */
+}
+
+.button .material-icons {
+    font-size: 20px;
 }
 
 .primary-button {
     background-color: var(--primary-color);
     color: white;
+    box-shadow: 0 2px 4px rgba(66, 133, 244, 0.3);
 }
 
 .primary-button:hover {
-    background-color: rgba(0, 122, 255, 0.9);
+    background-color: #357ae8; /* Darker blue */
+    box-shadow: 0 4px 8px rgba(66, 133, 244, 0.4);
 }
 
 .danger-button {
     background-color: var(--danger-color);
     color: white;
-    margin-top: 25px; /* 全削除ボタンの上マージン */
+    box-shadow: 0 2px 4px rgba(234, 67, 53, 0.3);
 }
 
 .danger-button:hover {
-    background-color: rgba(255, 59, 48, 0.9);
+    background-color: #D73C2C; /* Darker red */
+    box-shadow: 0 4px 8px rgba(234, 67, 53, 0.4);
 }
 
-.message {
-    text-align: center;
+.secondary-button {
+    background-color: var(--background-color); /* Light background for secondary */
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    box-shadow: none; /* No shadow by default */
+}
+
+.secondary-button:hover {
+    background-color: #ECEFF1; /* Slightly darker light gray */
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.1);
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
     margin-top: 15px;
-    font-weight: 500;
-    font-size: 15px;
-    padding: 8px;
-    border-radius: 8px;
-    opacity: 0; /* 初期は非表示 */
-    transition: opacity 0.3s ease;
-}
-
-.message.success {
-    color: var(--secondary-color);
-    background-color: rgba(52, 199, 89, 0.1);
-    opacity: 1;
-}
-
-.message.error {
-    color: var(--danger-color);
-    background-color: rgba(255, 59, 48, 0.1);
-    opacity: 1;
-}
-
-.message.info {
-    color: var(--primary-color);
-    background-color: rgba(0, 122, 255, 0.1);
-    opacity: 1;
-}
-
-/* グラフ表示 */
-.chart-card h2 {
     margin-bottom: 15px;
 }
 
-.chart-controls {
-    display: flex; /* 横並びにする */
-    justify-content: space-around; /* 均等に配置 */
-    gap: 15px; /* アイテム間の隙間 */
-    margin-bottom: 20px;
-    flex-wrap: wrap; /* 小さい画面で折り返す */
+.button-group .button {
+    flex: 1;
+    margin: 0;
 }
 
-.chart-control-group {
+/* App Messages */
+.app-message { /* Renamed from .message */
+    text-align: center;
+    margin: 15px 15px 0 15px; /* Consistent side margins */
+    font-weight: 500;
+    font-size: 14px;
+    padding: 10px 15px; /* More padding */
+    border-radius: 8px;
+    opacity: 0;
+    transition: opacity 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+    display: none; /* Hidden by default */
+    box-shadow: var(--shadow-light);
+}
+
+.app-message.success {
+    color: #1E8449; /* Dark green */
+    background-color: #E6F4EA; /* Light green */
+    opacity: 1;
+}
+
+.app-message.error {
+    color: #C53929; /* Dark red */
+    background-color: #FCE8E6; /* Light red */
+    opacity: 1;
+}
+
+.app-message.info {
+    color: #1A73E8; /* Dark blue */
+    background-color: #E8F0FE; /* Light blue */
+    opacity: 1;
+}
+
+/* Chart Styles */
+.chart-card .chart-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    justify-content: space-around;
+}
+
+.chart-card .chart-controls .input-group { /* Use input-group for labels/selects */
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+}
+.chart-card .chart-controls label {
+    margin-bottom: 5px;
+}
+.chart-card .chart-controls select {
+    max-width: 180px; /* Adjust select width */
+}
+
+.chart-container {
+    background-color: var(--background-color);
+    border-radius: var(--card-radius);
+    padding: 15px;
+    height: 300px;
     display: flex;
     align-items: center;
+    justify-content: center;
 }
 
-.chart-controls label {
-    font-size: 16px;
-    color: var(--secondary-text-color);
-    margin-right: 10px;
-    white-space: nowrap; /* ラベルが改行されないように */
-}
-
-.chart-controls select {
-    flex-grow: 1; /* スペースを埋める */
-    max-width: 150px; /* 最大幅を設定 */
-    display: inline-block;
-    padding: 8px 12px;
-    font-size: 16px;
-    border: 1px solid var(--border-color);
+/* Table Styles */
+.list-card .table-container { /* Renamed for clarity */
+    overflow-x: auto;
+    margin-bottom: 20px;
+    background-color: var(--background-color);
     border-radius: 8px;
-    background-color: var(--card-background);
+    border: 1px solid var(--border-color); /* Subtle border for tables */
 }
 
-
-/* 記録一覧テーブル */
-.record-list-card {
-    padding-bottom: 25px; /* ボタンと区別するため */
-}
-
-#recordTableContainer {
-    overflow-x: auto; /* スマホなどで横スクロール可能にする */
-    margin-bottom: 20px; /* テーブルとボタンの間の余白 */
-}
-
-#recordsTable {
+table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 0; /* カード内で調整 */
+    margin: 0;
 }
 
-#recordsTable th, #recordsTable td {
-    padding: 12px;
+table th, table td {
+    padding: 12px 15px;
     text-align: center;
-    border-bottom: 1px solid var(--border-color); /* 下線のみ */
-    font-size: 15px;
-    color: var(--text-color);
-    white-space: nowrap; /* 内容が改行されないように */
-}
-
-#recordsTable th {
-    background-color: transparent; /* カード背景に合わせる */
-    font-weight: 600;
-    color: var(--secondary-text-color);
-    padding-bottom: 15px;
     border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+    color: var(--text-color);
+    white-space: nowrap;
 }
 
-#recordsTable tbody tr:last-child td {
-    border-bottom: none; /* 最後の行の下線はなし */
+table th {
+    background-color: var(--background-color);
+    font-weight: 500;
+    color: var(--secondary-text-color);
+    position: sticky; /* Sticky header for tables */
+    top: 0;
+    z-index: 1;
+}
+
+table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .delete-button {
     background-color: var(--danger-color);
     color: white;
     border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 6px 10px; /* Smaller delete button */
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     transition: background-color 0.2s ease;
 }
 
 .delete-button:hover {
-    background-color: rgba(255, 59, 48, 0.9);
+    background-color: #D73C2C;
 }
 
-.no-records-message {
+.no-data-message {
     text-align: center;
     color: var(--secondary-text-color);
     font-style: italic;
-    margin-top: 20px;
-    font-size: 15px;
-    display: none; /* デフォルトで非表示、JSで表示を切り替える */
+    margin: 20px 0;
+    font-size: 14px;
+    display: none;
+    padding: 10px;
+    background-color: var(--background-color);
+    border-radius: var(--card-radius);
 }
 
+/* Food Screen Specific Styles */
+.suggestion-area, .achievement-area, .nutrient-input-area {
+    background-color: var(--background-color);
+    border-radius: var(--card-radius);
+    padding: 15px;
+    margin-top: 20px;
+    box-shadow: var(--shadow-light);
+    text-align: center; /* Center text for these sections */
+}
 
-/* レスポンシブデザイン */
+.suggestion-area h3, .achievement-area h3, .nutrient-input-area h3 {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.suggestion-text, .actual-text {
+    font-size: 22px; /* Smaller than h1, but prominent */
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    word-break: break-word;
+}
+.actual-text {
+    color: var(--secondary-color); /* Green for actual meal */
+}
+
+.nutrient-input-area .input-group {
+    margin-bottom: 10px;
+}
+
+/* Custom Nutrient Fields */
+.custom-nutrient-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end; /* Align inputs and button at bottom */
+    margin-bottom: 15px; /* Consistent with other input groups */
+}
+.custom-nutrient-group label {
+    flex-basis: 100%; /* Label takes full width */
+    margin-bottom: 0;
+}
+.custom-nutrient-group input {
+    flex: 1; /* Inputs take equal width */
+    min-width: 100px;
+}
+.custom-nutrient-group .remove-custom-nutrient {
+    width: auto;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 20px; /* Pill shape for remove button */
+    margin-top: 0;
+    height: 40px; /* Align with input height */
+}
+
+/* Bottom Navigation Bar */
+#bottomNavBar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: var(--navbar-height);
+    background-color: var(--card-background);
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+    border-top: 1px solid var(--border-color);
+    padding-bottom: env(safe-area-inset-bottom); /* For iPhone X notch */
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-decoration: none;
+    color: var(--secondary-text-color);
+    font-size: 11px; /* Smaller text for nav items */
+    font-weight: 500;
+    padding: 5px 0;
+    transition: color 0.2s ease, transform 0.1s ease; /* Add transform for tap feedback */
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item:active {
+    transform: scale(0.95); /* Slight scale down on tap */
+}
+
+.nav-item .material-icons {
+    font-size: 24px;
+    margin-bottom: 2px;
+    transition: color 0.2s ease;
+}
+
+.nav-item.active {
+    color: var(--primary-color);
+}
+
+.nav-item.active .material-icons {
+    color: var(--primary-color);
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-    .container {
-        padding: 0 10px;
+    header {
+        min-height: 48px; /* Slightly smaller header on mobile */
+        padding: 10px 15px;
+    }
+    header h1 {
+        font-size: 22px;
+    }
+
+    main.screen-content {
+        padding: 15px;
     }
 
     .card {
         padding: 15px;
     }
 
-    h1 {
-        font-size: 28px;
-        margin-bottom: 20px;
-    }
-
     h2 {
-        font-size: 20px;
-        margin-bottom: 15px;
+        font-size: 18px;
+    }
+    h3 {
+        font-size: 16px;
     }
 
-    .summary-grid {
-        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        gap: 10px;
+    .summary-card .summary-details p {
+        font-size: 15px;
+    }
+    .summary-card .summary-details p strong {
+        font-size: 17px;
     }
 
-    .summary-item {
-        padding: 10px;
+    .input-group label {
+        font-size: 13px;
+        margin-bottom: 4px;
     }
-
-    .summary-value {
-        font-size: 24px;
-    }
-
-    .summary-unit {
-        font-size: 14px;
-    }
-
-    .form-group label {
-        font-size: 14px;
-        margin-bottom: 5px;
-    }
-
-    .form-group input[type="date"],
-    .form-group input[type="number"],
-    .form-group select {
-        padding: 10px;
+    .input-group input, .input-group select {
+        padding: 10px 12px;
         font-size: 15px;
     }
 
-    .button {
-        padding: 12px 15px;
-        font-size: 16px;
-        border-radius: 8px;
-    }
-
-    .danger-button {
-        margin-top: 20px;
-    }
-
-    .message {
+    .checkbox-group label {
+        padding: 6px 10px;
         font-size: 14px;
-        padding: 6px;
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+    }
+    .checkbox-group input[type="checkbox"]:checked::after {
+        font-size: 10px;
     }
 
-    .chart-controls {
-        gap: 10px;
-        flex-direction: column; /* 縦並びに変更 */
-        align-items: flex-start; /* 左寄せ */
+    .button {
+        padding: 10px 15px;
+        font-size: 15px;
+        border-radius: 20px;
+    }
+    .button .material-icons {
+        font-size: 18px;
     }
 
-    .chart-control-group {
-        width: 100%; /* 全幅に */
-        justify-content: flex-start; /* 左寄せ */
+    .app-message {
+        font-size: 13px;
+        padding: 8px 12px;
     }
 
-    .chart-controls select {
-        max-width: none; /* 最大幅の制限を解除 */
-        width: 100%; /* 全幅に */
-    }
-
-    #recordsTable th, #recordsTable td {
-        padding: 8px;
+    table th, table td {
+        padding: 10px 12px;
         font-size: 13px;
     }
-
     .delete-button {
-        padding: 6px 10px;
-        font-size: 12px;
-        border-radius: 5px;
+        padding: 5px 8px;
+        font-size: 11px;
     }
 
-    #recordTableContainer {
-        margin-bottom: 15px;
+    .suggestion-text, .actual-text {
+        font-size: 20px;
     }
 
-    .no-records-message {
+    .custom-nutrient-group {
+        flex-direction: column; /* Stack inputs vertically */
+        align-items: stretch;
+    }
+    .custom-nutrient-group input {
+        width: 100%;
+        min-width: unset;
+    }
+    .custom-nutrient-group .remove-custom-nutrient {
+        width: 100%; /* Full width button */
+        margin-top: 10px;
+    }
+
+    :root {
+        --navbar-height: 56px;
+    }
+    .nav-item {
+        font-size: 10px;
+    }
+    .nav-item .material-icons {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 20px;
+    }
+
+    main.screen-content {
+        padding: 10px;
+    }
+
+    .card {
+        padding: 15px;
+    }
+
+    h2 {
+        font-size: 16px;
+    }
+    h3 {
+        font-size: 15px;
+    }
+
+    .summary-card .summary-details p {
         font-size: 14px;
-        margin-top: 15px;
+    }
+    .summary-card .summary-details p strong {
+        font-size: 16px;
+    }
+
+    .input-group input, .input-group select {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+
+    .button {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    .button .material-icons {
+        font-size: 16px;
+    }
+
+    .app-message {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    table th, table td {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    table {
+        min-width: 380px; /* Ensure table still scrolls if too narrow */
+    }
+
+    .chart-container {
+        height: 220px;
+    }
+
+    .no-data-message {
+        font-size: 12px;
     }
 }

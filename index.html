@@ -2,154 +2,319 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ダイエット＆健康トラッカー</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Health Tracker</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Chart.js CDNの読み込み -->
+    <!-- Chart.js ライブラリの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- このバージョンではPWA Manifest、Service Worker、Google Iconsは使用しません -->
-    <!-- <link rel="manifest" href="manifest.json"> -->
-    <!-- <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"> -->
+    <!-- PWA Manifestのリンク -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Google Icons (ナビゲーションアイコン用) -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <h1>Health Tracker</h1>
+        <!-- 固定タイトルヘッダー -->
+        <header>
+            <h1 id="screenTitle">HOME</h1>
+        </header>
 
-        <!-- 最新の記録サマリー（カードデザイン） -->
-        <section class="card summary-card">
-            <h2>最新の記録</h2>
-            <div id="latestRecordSummary" class="summary-grid">
-                <div class="summary-item">
-                    <span class="summary-label">日付</span>
-                    <span id="summaryDate" class="summary-value">-</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">体重</span>
-                    <span id="summaryWeight" class="summary-value">-</span>
-                    <span class="summary-unit">kg</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">体脂肪率</span>
-                    <span id="summaryBodyFat" class="summary-value">-</span>
-                    <span class="summary-unit">%</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">筋肉量</span>
-                    <span id="summaryMuscleMass" class="summary-value">-</span>
-                    <span class="summary-unit">kg</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">ウエスト</span>
-                    <span id="summaryWaist" class="summary-value">-</span>
-                    <span class="summary-unit">cm</span>
-                </div>
-            </div>
-            <p id="noLatestRecordMessage" class="no-records-message">まだ記録がありません。</p>
-        </section>
+        <!-- メッセージ表示エリア -->
+        <div id="message" class="app-message"></div>
+        <div id="mealMessage" class="app-message"></div>
+        <div id="exerciseMessage" class="app-message"></div>
+        <div id="graphMessage" class="app-message"></div>
 
-        <!-- 記録入力フォーム（カードデザイン） -->
-        <section class="card record-form-card">
-            <h2>記録入力</h2>
-            <form id="trackerForm">
-                <div class="form-group">
-                    <label for="date">日付</label>
-                    <input type="date" id="date" required>
-                </div>
-                <div class="form-group">
-                    <label for="weight">体重 (kg)</label>
-                    <input type="number" id="weight" step="0.1" placeholder="75.0" required>
-                </div>
-                <div class="form-group">
-                    <label for="bodyFat">体脂肪率 (%)</label>
-                    <input type="number" id="bodyFat" step="0.1" placeholder="20.5">
-                </div>
-                <div class="form-group">
-                    <label for="muscleMass">筋肉量 (kg)</label>
-                    <input type="number" id="muscleMass" step="0.1" placeholder="55.2">
-                </div>
-                <div class="form-group">
-                    <label for="waist">ウエスト (cm)</label>
-                    <input type="number" id="waist" step="0.1" placeholder="92.0" required>
-                </div>
-                <!-- 食事プラン、運動プラン、金額記録は一旦削除し、シンプルに -->
-                <!-- <div class="form-group">
-                    <label>食事プラン</label>
-                    <div id="mealPlanList" class="checklist">
-                        <label><input type="checkbox" name="meal" value="breakfast"> 朝食</label>
-                        <label><input type="checkbox" name="meal" value="lunch"> 昼食</label>
-                        <label><input type="checkbox" name="meal" value="dinner"> 夕食</label>
-                        <label><input type="checkbox" name="meal" value="snack"> 間食</label>
+        <!-- 画面セクションのコンテナ -->
+        <main class="screen-content">
+            <!-- HOME画面 -->
+            <section id="homeScreen" class="screen active">
+                <!-- 最新記録サマリーカード -->
+                <div class="card summary-card">
+                    <h3>最新記録</h3>
+                    <div id="noLatestRecordMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
+                    <div class="summary-details">
+                        <p>日付: <strong id="summaryDate">-</strong></p>
+                        <p>体重: <strong id="summaryWeight">-</strong> kg</p>
+                        <p>体脂肪率: <strong id="summaryBodyFat">-</strong> %</p>
+                        <p>筋肉量: <strong id="summaryMuscleMass">-</strong> kg</p>
+                        <p>ウエスト: <strong id="summaryWaist">-</strong> cm</p>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="mealCost">食事にかかった金額 (円)</label>
-                    <input type="number" id="mealCost" step="1" placeholder="例: 1500">
+
+                <!-- 主要記録入力フォームカード -->
+                <div class="card form-card">
+                    <h2>主要記録</h2>
+                    <form id="trackerForm">
+                        <div class="input-group">
+                            <label for="date">日付:</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="weight">体重 (kg):</label>
+                            <input type="number" id="weight" step="0.1" placeholder="例: 65.5" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="bodyFat">体脂肪率 (%):</label>
+                            <input type="number" id="bodyFat" step="0.1" placeholder="例: 20.0">
+                        </div>
+                        <div class="input-group">
+                            <label for="muscleMass">筋肉量 (kg):</label>
+                            <input type="number" id="muscleMass" step="0.1" placeholder="例: 45.0">
+                        </div>
+                        <div class="input-group">
+                            <label for="waist">ウエスト (cm):</label>
+                            <input type="number" id="waist" step="0.1" placeholder="例: 75.0" required>
+                        </div>
+                        <button type="submit" class="button primary-button">記録を保存</button>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label>運動プラン</label>
-                    <div id="exercisePlanList" class="checklist">
-                        <label><input type="checkbox" name="exercise" value="running"> ランニング (30分)</label>
-                        <label><input type="checkbox" name="exercise" value="weightTraining"> 筋トレ (全身)</label>
-                        <label><input type="checkbox" name="exercise" value="stretching"> ストレッチ (20分)</label>
+
+                <!-- 主要記録一覧カード -->
+                <div class="card list-card">
+                    <h2>主要記録一覧</h2>
+                    <div id="noTableRecordsMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>日付</th>
+                                    <th>体重(kg)</th>
+                                    <th>体脂肪率(%)</th>
+                                    <th>筋肉量(kg)</th>
+                                    <th>ウエスト(cm)</th>
+                                    <th>食事</th>
+                                    <th>運動</th>
+                                    <th>金額</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTableBody">
+                                <!-- 記録はJavaScriptでここに挿入されます -->
+                            </tbody>
+                        </table>
                     </div>
-                </div> -->
-                <button type="submit" class="button primary-button">記録する</button>
-            </form>
-            <p id="message" class="message"></p>
-        </section>
-
-        <!-- グラフ表示 -->
-        <section class="card chart-card">
-            <h2>推移グラフ</h2>
-            <div class="chart-controls">
-                <div class="chart-control-group">
-                    <label for="chartType">表示項目:</label>
-                    <select id="chartType">
-                        <option value="weight">体重</option>
-                        <option value="waist">ウエスト</option>
-                        <option value="bodyFat">体脂肪率</option>
-                        <option value="muscleMass">筋肉量</option>
-                        <!-- <option value="mealCost">食事金額</option> -->
-                    </select>
+                    <button type="button" id="clearAllRecords" class="button danger-button">全ての主要記録を削除</button>
                 </div>
-                <div class="chart-control-group">
-                    <label for="chartPeriod">期間:</label>
-                    <select id="chartPeriod">
-                        <option value="all">全期間</option>
-                        <option value="7days">過去7日</option>
-                        <option value="30days">過去30日</option>
-                        <option value="90days">過去90日</option>
-                    </select>
-                </div>
-            </div>
-            <canvas id="myChart"></canvas>
-            <p id="noChartDataMessage" class="no-records-message">グラフ表示のためのデータがありません。</p>
-        </section>
+            </section>
 
-        <!-- 記録一覧 -->
-        <section class="card record-list-card">
-            <h2>記録一覧</h2>
-            <div id="recordTableContainer">
-                <table id="recordsTable">
-                    <thead>
-                        <tr>
-                            <th>日付</th>
-                            <th>体重</th>
-                            <th>体脂肪率</th>
-                            <th>筋肉量</th>
-                            <th>ウエスト</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- 記録データがここに挿入されます -->
-                    </tbody>
-                </table>
-                <p id="noTableRecordsMessage" class="no-records-message">まだ記録がありません。</p>
-            </div>
-            <button id="clearAllRecords" class="button danger-button">全記録削除</button>
-        </section>
+            <!-- FOOD画面 -->
+            <section id="foodScreen" class="screen">
+                <!-- 食事記録フォームカード -->
+                <div class="card form-card">
+                    <h2>食事記録</h2>
+                    <form id="mealInputForm">
+                        <div class="input-group">
+                            <label for="mealDate">日付:</label>
+                            <input type="date" id="mealDate" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label>食事タイプを選択:</label>
+                            <div class="checkbox-group meal-type-selection">
+                                <label><input type="checkbox" name="mealType" value="breakfast"> 朝食</label>
+                                <label><input type="checkbox" name="mealType" value="lunch"> 昼食</label>
+                                <label><input type="checkbox" name="mealType" value="dinner"> 夕食</label>
+                                <label><input type="checkbox" name="mealType" value="snack"> 間食</label>
+                            </div>
+                        </div>
+                        <button type="button" id="randomMealButton" class="button secondary-button">ランダム提案</button>
+
+                        <div id="mealSuggestionArea" class="suggestion-area hidden-section">
+                            <h3>提案された食事プラン:</h3>
+                            <p id="suggestedMealName" class="suggestion-text"></p>
+                            <div class="button-group">
+                                <button type="button" id="okMealButton" class="button primary-button">OK</button>
+                                <button type="button" id="ngMealButton" class="button danger-button">NG</button>
+                            </div>
+                        </div>
+
+                        <div id="mealAchievementArea" class="achievement-area hidden-section">
+                            <h3>食事の達成状況: <span id="actualMealNameDisplay" class="actual-text"></span></h3>
+                            <div class="button-group">
+                                <button type="button" id="passMealButton" class="button primary-button">PASS</button>
+                                <button type="button" id="failMealButton" class="button danger-button">FAIL</button>
+                            </div>
+                            <div id="manualMealInput" class="input-group hidden-section">
+                                <label for="manualMealText">実際に食べたもの:</label>
+                                <input type="text" id="manualMealText" placeholder="例: カレーライス">
+                                <button type="button" id="confirmManualMealButton" class="button primary-button">確定</button>
+                            </div>
+                        </div>
+
+                        <div id="nutrientInputArea" class="nutrient-input-area hidden-section">
+                            <h3>栄養素入力</h3>
+                            <div class="input-group">
+                                <label for="calories">カロリー (kcal):</label>
+                                <input type="number" id="calories" step="1" placeholder="例: 600">
+                            </div>
+                            <div class="input-group">
+                                <label for="protein">タンパク質 (g):</label>
+                                <input type="number" id="protein" step="0.1" placeholder="例: 30.5">
+                            </div>
+                            <div class="input-group">
+                                <label for="fat">脂質 (g):</label>
+                                <input type="number" id="fat" step="0.1" placeholder="例: 20.0">
+                            </div>
+                            <div class="input-group">
+                                <label for="sodium">塩分 (mg):</label>
+                                <input type="number" id="sodium" step="1" placeholder="例: 1500">
+                            </div>
+
+                            <div id="customNutrientFields">
+                                <!-- カスタム栄養素がここに動的に追加される -->
+                            </div>
+                            <button type="button" id="addCustomNutrientButton" class="button secondary-button icon-button"><span class="material-icons">add_circle_outline</span> カスタム栄養素を追加</button>
+
+                            <div class="input-group">
+                                <label for="mealCostInput">食事にかかった金額 (円):</label>
+                                <input type="number" id="mealCostInput" step="1" placeholder="例: 1500">
+                            </div>
+
+                            <button type="button" id="completeMealButton" class="button primary-button">記録を完了</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 日ごとの食事合計金額カード -->
+                <div class="card summary-card">
+                    <h3>日ごとの食事合計金額</h3>
+                    <div id="noDailyCostMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
+                    <div id="dailyCostSummary">
+                        <!-- 合計金額はJavaScriptでここに挿入されます -->
+                    </div>
+                </div>
+
+                <!-- 食事記録一覧カード -->
+                <div class="card list-card">
+                    <h2>食事記録一覧</h2>
+                    <div id="noMealTableRecordsMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>日付</th>
+                                    <th>タイプ</th>
+                                    <th>プラン</th>
+                                    <th>実際</th>
+                                    <th>カロリー</th>
+                                    <th>タンパク質</th>
+                                    <th>脂質</th>
+                                    <th>塩分</th>
+                                    <th>金額(円)</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mealsTableBody">
+                                <!-- 食事記録データがここに挿入されます -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" id="clearAllMealRecords" class="button danger-button">全ての食事記録を削除</button>
+                </div>
+            </section>
+
+            <!-- SPORT画面 -->
+            <section id="sportScreen" class="screen">
+                <!-- 運動記録フォームカード -->
+                <div class="card form-card">
+                    <h2>運動記録</h2>
+                    <form id="exerciseTrackerForm">
+                        <div class="input-group">
+                            <label for="exerciseDate">日付:</label>
+                            <input type="date" id="exerciseDate" required>
+                        </div>
+
+                        <div class="checkbox-group" id="exercisePlanList">
+                            <p>今日の運動を選択:</p>
+                            <label><input type="checkbox" name="exercise" value="ウォーキング(30分)"> ウォーキング(30分)</label>
+                            <label><input type="checkbox" name="exercise" value="ジョギング(30分)"> ジョギング(30分)</label>
+                            <label><input type="checkbox" name="exercise" value="筋トレ(上半身)"> 筋トレ(上半身)</label>
+                            <label><input type="checkbox" name="exercise" value="筋トレ(下半身)"> 筋トレ(下半身)</label>
+                            <label><input type="checkbox" name="exercise" value="ストレッチ(20分)"> ストレッチ(20分)</label>
+                            <label><input type="checkbox" name="exercise" value="水泳(45分)"> 水泳(45分)</label>
+                        </div>
+
+                        <button type="submit" class="button primary-button">運動記録を保存</button>
+                    </form>
+                </div>
+
+                <!-- 運動記録一覧カード -->
+                <div class="card list-card">
+                    <h2>運動記録一覧</h2>
+                    <div id="noExerciseTableRecordsMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>日付</th>
+                                    <th>運動内容</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="exercisesTableBody">
+                                <!-- 記録はJavaScriptでここに挿入されます -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" id="clearAllExerciseRecords" class="button danger-button">全ての運動記録を削除</button>
+                </div>
+            </section>
+
+            <!-- GRAPH画面 -->
+            <section id="graphScreen" class="screen">
+                <!-- グラフ表示カード -->
+                <div class="card chart-card">
+                    <h2>記録グラフ</h2>
+                    <div class="chart-controls">
+                        <div class="input-group">
+                            <label for="chartType">表示項目:</label>
+                            <select id="chartType">
+                                <option value="weight">体重</option>
+                                <option value="bodyFat">体脂肪率</option>
+                                <option value="muscleMass">筋肉量</option>
+                                <option value="waist">ウエスト</option>
+                                <option value="mealCost">食事金額</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="chartPeriod">期間:</label>
+                            <select id="chartPeriod">
+                                <option value="7days">過去7日</option>
+                                <option value="30days">過去30日</option>
+                                <option value="90days">過去90日</option>
+                                <option value="all">全期間</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="myChart"></canvas>
+                        <div id="noChartDataMessage" class="no-data-message" style="display: none;">データが不足しているため、グラフを表示できません。</div>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
+
+    <!-- 下部ナビゲーションバー -->
+    <nav id="bottomNavBar">
+        <a href="#" class="nav-item active" data-screen="home">
+            <span class="material-icons">home</span>
+            <span class="nav-text">HOME</span>
+        </a>
+        <a href="#" class="nav-item" data-screen="food">
+            <span class="material-icons">restaurant</span>
+            <span class="nav-text">FOOD</span>
+        </a>
+        <a href="#" class="nav-item" data-screen="sport">
+            <span class="material-icons">fitness_center</span>
+            <span class="nav-text">SPORT</span>
+        </a>
+        <a href="#" class="nav-item" data-screen="graph">
+            <span class="material-icons">timeline</span>
+            <span class="nav-text">GRAPH</span>
+        </a>
+    </nav>
 
     <script src="app.js"></script>
 </body>
