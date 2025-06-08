@@ -1,196 +1,164 @@
 // js/ui/graphUI.js
-import { loadRecords } from '../services/storageService.js';
+import { getRecords } from '../utils/storage.js';
+import { showMessage } from '../utils/helpers.js';
 
-// === DOM要素の取得 ===
+// DOM要素の取得
 const chartTypeSelect = document.getElementById('chartType');
 const chartPeriodSelect = document.getElementById('chartPeriod');
+const myChartCanvas = document.getElementById('myChart');
 const noChartDataMessage = document.getElementById('noChartDataMessage');
-let myChart; // Chartインスタンスを保持する変数
 
-// === ローカルストレージのキー ===
-const STORAGE_KEY_MAIN = 'fitnessRecords';
-const STORAGE_KEY_MEAL = 'mealRecords';
+let myChart; // Chart.jsのインスタンスを保持する変数
 
-/**
- * グラフを初期化または更新する
- */
-export const updateChart = () => {
-    const mainRecords = loadRecords(STORAGE_KEY_MAIN);
-    const mealRecords = loadRecords(STORAGE_KEY_MEAL); // 食事金額の取得元
-    const allDates = Array.from(new Set([...Object.keys(mainRecords), ...Object.keys(mealRecords)]))
-                          .sort((a, b) => new Date(a) - new Date(b)); // 全記録から日付を結合し昇順ソート
-
-    const selectedType = chartTypeSelect.value;
-    const selectedPeriod = chartPeriodSelect.value;
-
-    let filteredDates = [];
-    const today = new Date();
-
-    if (selectedPeriod === 'all') {
-        filteredDates = allDates;
-    } else {
-        let daysToSubtract;
-        if (selectedPeriod === '7days') daysToSubtract = 7;
-        else if (selectedPeriod === '30days') daysToSubtract = 30;
-        else if (selectedPeriod === '90days') daysToSubtract = 90;
-
-        const periodStartDate = new Date(today);
-        periodStartDate.setDate(today.getDate() - daysToSubtract);
-        periodStartDate.setHours(0, 0, 0, 0);
-
-        filteredDates = allDates.filter(dateStr => {
-            const recordDate = new Date(dateStr);
-            recordDate.setHours(0, 0, 0, 0);
-            return recordDate >= periodStartDate;
-        });
+// 初期化関数
+export const initializeGraph = () => {
+    // 選択ボックスの変更イベントリスナー
+    if (chartTypeSelect) {
+        chartTypeSelect.addEventListener('change', updateChart);
+    }
+    if (chartPeriodSelect) {
+        chartPeriodSelect.addEventListener('change', updateChart);
     }
 
-    const dataLabels = [];
-    const dataValues = [];
+    // グラフ画面がアクティブになったときに描画する
+    // app.jsでshowScreen('graph')が呼ばれたときに、この関数が呼ばれるように設計されていることを想定
+    // または、初回ロード時にも描画
+    updateChart();
+};
 
-    filteredDates.forEach(date => {
-        let value = null;
-        if (selectedType === 'mealCost') {
-            const record = mealRecords[date];
-            if (record && record.mealCost !== null && !isNaN(record.mealCost)) {
-                value = record.mealCost;
-            }
-        } else {
-            const record = mainRecords[date];
-            if (record && record[selectedType] !== null && !isNaN(record[selectedType])) {
-                value = record[selectedType];
-            }
+// グラフを更新する関数
+export const updateChart = () => {
+    const selectedType = chartTypeSelect.value;
+    const selectedPeriod = chartPeriodSelect.value;
+    const records = getRecords('mainRecords').sort((a, b) => new Date(a.date) - new Date(b.date)); // 日付の古い順にソート
+
+    let filteredRecords = records;
+    if (selectedPeriod !== 'all') {
+        const today = new Date();
+        const cutoffDate = new Date();
+        if (selectedPeriod === '7days') {
+            cutoffDate.setDate(today.getDate() - 7);
+        } else if (selectedPeriod === '30days') {
+            cutoffDate.setDate(today.getDate() - 30);
+        } else if (selectedPeriod === '90days') {
+            cutoffDate.setDate(today.getDate() - 90);
         }
+        filteredRecords = records.filter(record => new Date(record.date) >= cutoffDate);
+    }
 
-        // データが存在する場合のみ追加
-        if (value !== null) {
-            dataLabels.push(date);
-            dataValues.push(value);
+    // データが存在し、かつ選択されたタイプに有効なデータがあるかチェック
+    const hasValidData = filteredRecords.some(record => record[selectedType] !== null && !isNaN(record[selectedType]));
+
+    if (filteredRecords.length === 0 || !hasValidData) {
+        // データがない場合はメッセージを表示し、グラフを非表示にする
+        noChartDataMessage.style.display = 'block';
+        myChartCanvas.style.display = 'none';
+        if (myChart) {
+            myChart.destroy(); // 既存のグラフがあれば破棄
+            myChart = null;
         }
-    });
+        return;
+    } else {
+        noChartDataMessage.style.display = 'none';
+        myChartCanvas.style.display = 'block';
+    }
 
-    const ctx = document.getElementById('myChart').getContext('2d');
-    const unit = getUnit(selectedType);
-    const label = getLabel(selectedType);
-    const chartColor = getChartColor(selectedType);
+    const labels = filteredRecords.map(record => record.date);
+    const data = filteredRecords.map(record => record[selectedType]);
+
+    const datasets = [{
+        label: getLabel(selectedType),
+        data: data,
+        borderColor: getBorderColor(selectedType),
+        backgroundColor: getBackgroundColor(selectedType),
+        fill: false,
+        tension: 0.1
+    }];
 
     if (myChart) {
-        myChart.data.labels = dataLabels;
-        myChart.data.datasets[0].data = dataValues;
-        myChart.data.datasets[0].label = label;
-        myChart.data.datasets[0].borderColor = chartColor;
-        myChart.data.datasets[0].backgroundColor = getChartColor(selectedType, 0.2);
-        myChart.options.scales.y.title.text = unit;
-        myChart.options.scales.y.beginAtZero = selectedType === 'mealCost'; // 金額は0から開始
-        myChart.options.plugins.tooltip.callbacks.label = function(context) {
-            let label = context.dataset.label || '';
-            if (label) {
-                label += ': ';
-            }
-            if (context.parsed.y !== null) {
-                let value = context.parsed.y.toFixed(selectedType === 'mealCost' ? 0 : 1);
-                label += value + ' ' + unit;
-            }
-            return label;
-        };
-        myChart.update();
-    } else {
-        myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: dataLabels,
-                datasets: [{
-                    label: label,
-                    data: dataValues,
-                    borderColor: chartColor,
-                    backgroundColor: getChartColor(selectedType, 0.2),
-                    tension: 0.3,
-                    fill: true,
-                    pointRadius: 5,
-                    pointBackgroundColor: chartColor,
-                    pointBorderColor: '#fff',
-                    pointHoverRadius: 7,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 14
-                            },
-                            color: '#636366'
-                        }
+        myChart.destroy(); // 既存のグラフがあれば破棄
+    }
+
+    const ctx = myChartCanvas.getContext('2d');
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: `${getLabel(selectedType)}の推移`,
+                    font: {
+                        size: 18,
+                        weight: 'bold'
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    let value = context.parsed.y.toFixed(selectedType === 'mealCost' ? 0 : 1);
-                                    label += value + ' ' + unit;
-                                }
-                                return label;
+                    color: 'var(--text-color)'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
                             }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y.toLocaleString() + getUnit(selectedType);
+                            }
+                            return label;
                         }
                     }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: '日付',
-                            color: '#636366'
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: getXAxisUnit(selectedPeriod), // 期間に応じてX軸の単位を変更
+                        displayFormats: {
+                            day: 'MMM DD',
+                            month: 'MMM YY',
+                            quarter: 'YYYY Q',
+                            year: 'YYYY'
                         },
-                        ticks: {
-                            color: '#636366'
-                        },
-                        grid: {
-                            color: '#e5e5ea'
-                        }
+                        tooltipFormat: 'YYYY/MM/DD'
                     },
-                    y: {
-                        title: {
-                            display: true,
-                            text: unit,
-                            color: '#636366'
-                        },
-                        ticks: {
-                            color: '#636366'
-                        },
-                        grid: {
-                            color: '#e5e5ea'
-                        },
-                        beginAtZero: selectedType === 'mealCost' // 金額は0から開始
+                    title: {
+                        display: true,
+                        text: '日付',
+                        color: 'var(--secondary-text-color)'
+                    },
+                    grid: {
+                        color: 'var(--chart-grid-color)'
+                    },
+                    ticks: {
+                        color: 'var(--secondary-text-color)'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: `${getLabel(selectedType)}${getUnit(selectedType)}`,
+                        color: 'var(--secondary-text-color)'
+                    },
+                    beginAtZero: false,
+                    grid: {
+                        color: 'var(--chart-grid-color)'
+                    },
+                    ticks: {
+                        color: 'var(--secondary-text-color)'
                     }
                 }
             }
-        });
-    }
-
-    if (dataLabels.length === 0) {
-        noChartDataMessage.style.display = 'block';
-        if (myChart) {
-            myChart.destroy();
-            myChart = null;
         }
-    } else {
-        noChartDataMessage.style.display = 'none';
-    }
+    });
 };
 
-/**
- * 選択された項目に応じたラベルを返す
- * @param {string} type - 項目タイプ
- * @returns {string} 表示ラベル
- */
+// グラフのラベルを取得
 const getLabel = (type) => {
     switch (type) {
         case 'weight': return '体重';
@@ -202,44 +170,49 @@ const getLabel = (type) => {
     }
 };
 
-/**
- * 選択された項目に応じた単位を返す
- * @param {string} type - 項目タイプ
- * @returns {string} 単位
- */
+// グラフの単位を取得
 const getUnit = (type) => {
     switch (type) {
-        case 'weight':
-        case 'muscleMass': return 'kg';
-        case 'bodyFat': return '%';
-        case 'waist': return 'cm';
-        case 'mealCost': return '円';
+        case 'weight': return ' kg';
+        case 'bodyFat': return ' %';
+        case 'muscleMass': return ' kg';
+        case 'waist': return ' cm';
+        case 'mealCost': return ' 円';
         default: return '';
     }
 };
 
-/**
- * 選択された項目に応じたグラフの色を返す
- * @param {string} type - 項目タイプ
- * @param {number} alpha - 透明度 (0-1)
- * @returns {string} 色の文字列
- */
-const getChartColor = (type, alpha = 1) => {
-    const colors = {
-        weight: `rgba(0, 122, 255, ${alpha})`,      // primary-color (blue)
-        bodyFat: `rgba(255, 149, 0, ${alpha})`,     // orange
-        muscleMass: `rgba(52, 199, 89, ${alpha})`,  // secondary-color (green)
-        waist: `rgba(88, 86, 214, ${alpha})`,       // purple
-        mealCost: `rgba(255, 45, 85, ${alpha})`    // reddish-pink (for money)
-    };
-    return colors[type] || `rgba(0, 0, 0, ${alpha})`;
+// グラフの線の色
+const getBorderColor = (type) => {
+    switch (type) {
+        case 'weight': return '#007aff'; // primary-color
+        case 'bodyFat': return '#34c759'; // secondary-color
+        case 'muscleMass': return '#5856d6';
+        case 'waist': return '#ff9500';
+        case 'mealCost': return '#5ac8fa';
+        default: return '#000000';
+    }
 };
 
-/**
- * GRAPH画面のイベントリスナーを設定する
- */
-export const setupGraphEventListeners = () => {
-    // グラフ表示項目変更時のイベントリスナー
-    chartTypeSelect.addEventListener('change', updateChart);
-    chartPeriodSelect.addEventListener('change', updateChart);
+// グラフの塗りつぶし色 (薄め)
+const getBackgroundColor = (type) => {
+    switch (type) {
+        case 'weight': return 'rgba(0, 122, 255, 0.2)';
+        case 'bodyFat': return 'rgba(52, 199, 89, 0.2)';
+        case 'muscleMass': return 'rgba(88, 86, 214, 0.2)';
+        case 'waist': return 'rgba(255, 149, 0, 0.2)';
+        case 'mealCost': return 'rgba(90, 200, 250, 0.2)';
+        default: return 'rgba(0, 0, 0, 0.1)';
+    }
+};
+
+// X軸の表示単位を期間に応じて決定
+const getXAxisUnit = (period) => {
+    if (period === '7days') {
+        return 'day';
+    } else if (period === '30days' || period === '90days') {
+        return 'week'; // 30日や90日なら週単位で表示
+    } else { // 'all'
+        return 'month'; // 全期間なら月単位で表示
+    }
 };

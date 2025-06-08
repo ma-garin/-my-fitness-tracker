@@ -37,6 +37,16 @@
 
         <main class="screen-container">
             <section id="homeScreen" class="screen active">
+                <div class="summary-section">
+                    <h3>最新記録</h3>
+                    <div id="noLatestRecordMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
+                    <p>日付: <strong id="summaryDate">-</strong></p>
+                    <p>体重: <strong id="summaryWeight">-</strong> kg</p>
+                    <p>体脂肪率: <strong id="summaryBodyFat">-</strong> %</p>
+                    <p>筋肉量: <strong id="summaryMuscleMass">-</strong> kg</p>
+                    <p>ウエスト: <strong id="summaryWaist">-</strong> cm</p>
+                </div>
+
                 <h2>主要記録</h2>
                 <form id="trackerForm">
                     <label for="date">日付:</label>
@@ -56,16 +66,6 @@
 
                     <button type="submit">記録を保存</button>
                 </form>
-
-                <div class="summary-section">
-                    <h3>最新記録</h3>
-                    <div id="noLatestRecordMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
-                    <p>日付: <strong id="summaryDate">-</strong></p>
-                    <p>体重: <strong id="summaryWeight">-</strong> kg</p>
-                    <p>体脂肪率: <strong id="summaryBodyFat">-</strong> %</p>
-                    <p>筋肉量: <strong id="summaryMuscleMass">-</strong> kg</p>
-                    <p>ウエスト: <strong id="summaryWaist">-</strong> cm</p>
-                </div>
 
                 <h3>主要記録一覧</h3>
                 <div id="noTableRecordsMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>

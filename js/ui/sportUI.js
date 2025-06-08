@@ -1,111 +1,136 @@
 // js/ui/sportUI.js
-import { loadRecords, saveRecords } from '../services/storageService.js';
-import { showMessage } from '../utils/messageUtils.js';
-import { getFormattedToday } from '../utils/dateUtils.js'; // 日付ユーティリティをインポート
+import { getRecords, saveRecords, deleteRecord, clearAllRecordsByType } from '../utils/storage.js';
+import { showMessage, formatDate } from '../utils/helpers.js';
 
-// === DOM要素の取得 ===
+// DOM要素の取得
 const exerciseTrackerForm = document.getElementById('exerciseTrackerForm');
 const exerciseDateInput = document.getElementById('exerciseDate');
 const exercisePlanList = document.getElementById('exercisePlanList');
-const exerciseMessageElement = document.getElementById('exerciseMessage');
-const exercisesTableBody = document.querySelector('#exercisesTable tbody');
+const exercisesTableBody = document.getElementById('exercisesTableBody');
 const clearAllExerciseRecordsButton = document.getElementById('clearAllExerciseRecords');
 const noExerciseTableRecordsMessage = document.getElementById('noExerciseTableRecordsMessage');
 
-// === ローカルストレージのキー ===
-const STORAGE_KEY_EXERCISE = 'exerciseRecords';
+// 初期化関数
+export const initializeSport = () => {
+    // 今日の日付をデフォルト値としてセット
+    exerciseDateInput.value = new Date().toISOString().split('T')[0];
 
-// === 初期設定 ===
-exerciseDateInput.value = getFormattedToday(); // 今日の日付をセット
+    // フォーム送信イベントリスナー
+    if (exerciseTrackerForm) {
+        exerciseTrackerForm.addEventListener('submit', handleExerciseFormSubmit);
+    }
 
-/**
- * 運動記録一覧をレンダリングする
- */
+    // 全削除ボタンイベントリスナー
+    if (clearAllExerciseRecordsButton) {
+        clearAllExerciseRecordsButton.addEventListener('click', handleClearAllExerciseRecords);
+    }
+
+    // ページロード時に記録をレンダリング
+    renderExerciseRecords();
+};
+
+// 運動フォーム送信ハンドラ
+const handleExerciseFormSubmit = (event) => {
+    event.preventDefault();
+
+    const date = exerciseDateInput.value;
+    const selectedExercises = Array.from(exercisePlanList.querySelectorAll('input[name="exercise"]:checked'))
+                                 .map(checkbox => checkbox.value);
+
+    if (!date) {
+        showMessage('日付は必須項目です。', 'error', 'exerciseMessage');
+        return;
+    }
+
+    // mainRecordsから該当日のレコードを取得または作成
+    let mainRecords = getRecords('mainRecords');
+    let targetMainRecord = mainRecords.find(record => record.date === date);
+
+    if (!targetMainRecord) {
+        // 該当日の主要記録がない場合は新規作成
+        targetMainRecord = {
+            date: date,
+            weight: null, bodyFat: null, muscleMass: null, waist: null,
+            meal: [],
+            exercise: [],
+            mealCost: 0
+        };
+        mainRecords.push(targetMainRecord);
+    }
+
+    // 運動内容を更新
+    targetMainRecord.exercise = selectedExercises;
+
+    saveRecords('mainRecords', mainRecords);
+    showMessage('運動記録を保存しました！', 'success', 'exerciseMessage');
+    renderExerciseRecords();
+    exerciseTrackerForm.reset();
+    exerciseDateInput.value = new Date().toISOString().split('T')[0]; // 日付をリセット
+};
+
+// 運動記録のレンダリング
 export const renderExerciseRecords = () => {
-    const exerciseRecords = loadRecords(STORAGE_KEY_EXERCISE);
-    const dates = Object.keys(exerciseRecords).sort((a, b) => new Date(b) - new Date(a));
+    const mainRecords = getRecords('mainRecords').sort((a, b) => new Date(b.date) - new Date(a.date)); // 日付の新しい順
 
-    exercisesTableBody.innerHTML = '';
-    if (dates.length === 0) {
+    exercisesTableBody.innerHTML = ''; // テーブルをクリア
+
+    const exerciseRecordsForTable = [];
+    mainRecords.forEach(record => {
+        if (record.exercise && record.exercise.length > 0) {
+            exerciseRecordsForTable.push({
+                date: record.date,
+                exerciseContent: record.exercise.join(', ')
+            });
+        }
+    });
+
+    if (exerciseRecordsForTable.length === 0) {
         noExerciseTableRecordsMessage.style.display = 'block';
         clearAllExerciseRecordsButton.style.display = 'none';
     } else {
         noExerciseTableRecordsMessage.style.display = 'none';
         clearAllExerciseRecordsButton.style.display = 'block';
-        dates.forEach(date => {
-            const record = exerciseRecords[date];
-            const row = exercisesTableBody.insertRow();
-            row.insertCell().textContent = date;
-            row.insertCell().textContent = record.exercises && record.exercises.length > 0 ? record.exercises.join(', ') : '-';
 
-            const actionCell = row.insertCell();
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = '削除';
-            deleteButton.classList.add('delete-button');
-            deleteButton.addEventListener('click', () => {
-                deleteExerciseRecord(date);
-            });
-            actionCell.appendChild(deleteButton);
+        exerciseRecordsForTable.forEach(exerciseRecord => {
+            const row = exercisesTableBody.insertRow();
+            row.insertCell().textContent = formatDate(exerciseRecord.date);
+            row.insertCell().textContent = exerciseRecord.exerciseContent;
+
+            const deleteCell = row.insertCell();
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '削除';
+            deleteBtn.classList.add('delete-button');
+            // 運動記録の削除は、mainRecordsの該当日の運動内容をリセットする
+            deleteBtn.addEventListener('click', () => handleDeleteExerciseRecord(exerciseRecord.date));
+            deleteCell.appendChild(deleteBtn);
         });
     }
 };
 
-/**
- * 個別の運動記録を削除する
- * @param {string} dateToDelete - 削除する日付
- */
-const deleteExerciseRecord = (dateToDelete) => {
-    if (confirm(`${dateToDelete} の運動記録を本当に削除しますか？`)) {
-        const exerciseRecords = loadRecords(STORAGE_KEY_EXERCISE);
-        delete exerciseRecords[dateToDelete];
-        saveRecords(STORAGE_KEY_EXERCISE, exerciseRecords);
-        renderExerciseRecords();
-        // HOME画面の更新は、app.jsでまとめて呼び出すようにする
-        showMessage(exerciseMessageElement, '運動記録を削除しました。', 'info');
+// 運動記録削除ハンドラ（mainRecordsの該当日の運動内容をリセット）
+const handleDeleteExerciseRecord = (dateToDelete) => {
+    if (confirm(`日付: ${formatDate(dateToDelete)} の運動記録を削除してもよろしいですか？`)) {
+        let mainRecords = getRecords('mainRecords');
+        const targetRecord = mainRecords.find(record => record.date === dateToDelete);
+
+        if (targetRecord) {
+            targetRecord.exercise = []; // 運動内容を空にする
+            saveRecords('mainRecords', mainRecords);
+            showMessage('運動記録を削除しました。', 'info', 'exerciseMessage');
+            renderExerciseRecords();
+        }
     }
 };
 
-/**
- * SPORT画面のイベントリスナーを設定する
- * @param {Function} renderMainRecordsCallback - HOME画面の記録再レンダリングのためのコールバック関数
- */
-export const setupSportEventListeners = (renderMainRecordsCallback) => {
-    // 運動記録フォーム送信時の処理
-    exerciseTrackerForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        const date = exerciseDateInput.value;
-        const selectedExercises = Array.from(exercisePlanList.querySelectorAll('input[name="exercise"]:checked'))
-                                   .map(checkbox => checkbox.value);
-
-        if (!date) {
-            showMessage(exerciseMessageElement, '日付は必須項目です。', 'error');
-            return;
-        }
-
-        const exerciseRecords = loadRecords(STORAGE_KEY_EXERCISE);
-        exerciseRecords[date] = { exercises: selectedExercises };
-        saveRecords(STORAGE_KEY_EXERCISE, exerciseRecords);
+// 全運動記録削除ハンドラ (mainRecordsの全ての運動内容をリセット)
+const handleClearAllExerciseRecords = () => {
+    if (confirm('全ての運動記録を削除してもよろしいですか？この操作は取り消せません。')) {
+        let mainRecords = getRecords('mainRecords');
+        mainRecords.forEach(record => {
+            record.exercise = [];
+        });
+        saveRecords('mainRecords', mainRecords);
+        showMessage('全ての運動記録を削除しました。', 'info', 'exerciseMessage');
         renderExerciseRecords();
-        if (typeof renderMainRecordsCallback === 'function') {
-            renderMainRecordsCallback(); // HOME画面のテーブルも更新
-        }
-        showMessage(exerciseMessageElement, '運動記録を保存しました！', 'success');
-
-        // フォームをクリア
-        exercisePlanList.querySelectorAll('input[name="exercise"]').forEach(checkbox => checkbox.checked = false);
-        exerciseDateInput.value = getFormattedToday(); // 日付を今日に戻す
-    });
-
-    // 全運動記録削除ボタンの処理
-    clearAllExerciseRecordsButton.addEventListener('click', () => {
-        if (confirm('全ての運動記録を削除してもよろしいですか？この操作は元に戻せません。')) {
-            localStorage.removeItem(STORAGE_KEY_EXERCISE);
-            renderExerciseRecords();
-            if (typeof renderMainRecordsCallback === 'function') {
-                renderMainRecordsCallback(); // HOME画面のテーブルも更新
-            }
-            showMessage(exerciseMessageElement, '全ての運動記録を削除しました。', 'info');
-        }
-    });
+    }
 };

@@ -1,154 +1,173 @@
 // js/ui/foodUI.js
-import { loadRecords, saveRecords } from '../services/storageService.js';
-import { showMessage } from '../utils/messageUtils.js';
-import { getFormattedToday } from '../utils/dateUtils.js'; // 日付ユーティリティをインポート
+import { getRecords, saveRecords, deleteRecord, clearAllRecordsByType } from '../utils/storage.js';
+import { showMessage, formatDate } from '../utils/helpers.js';
 
-// === DOM要素の取得 ===
+// DOM要素の取得
 const mealTrackerForm = document.getElementById('mealTrackerForm');
 const mealDateInput = document.getElementById('mealDate');
 const mealPlanList = document.getElementById('mealPlanList');
 const mealCostInput = document.getElementById('mealCost');
-const mealMessageElement = document.getElementById('mealMessage');
-const mealsTableBody = document.querySelector('#mealsTable tbody');
+const mealsTableBody = document.getElementById('mealsTableBody');
 const clearAllMealRecordsButton = document.getElementById('clearAllMealRecords');
-const noMealTableRecordsMessage = document.getElementById('noMealTableRecordsMessage');
-const dailyCostSummary = document.getElementById('dailyCostSummary');
+const dailyCostSummaryDiv = document.getElementById('dailyCostSummary');
 const noDailyCostMessage = document.getElementById('noDailyCostMessage');
+const noMealTableRecordsMessage = document.getElementById('noMealTableRecordsMessage');
 
-// === ローカルストレージのキー ===
-const STORAGE_KEY_MEAL = 'mealRecords';
+// 初期化関数
+export const initializeFood = () => {
+    // 今日の日付をデフォルト値としてセット
+    mealDateInput.value = new Date().toISOString().split('T')[0];
 
-// === 初期設定 ===
-mealDateInput.value = getFormattedToday(); // 今日の日付をセット
+    // フォーム送信イベントリスナー
+    if (mealTrackerForm) {
+        mealTrackerForm.addEventListener('submit', handleMealFormSubmit);
+    }
 
-/**
- * 食事記録一覧、日ごとの合計金額をレンダリングする
- */
+    // 全削除ボタンイベントリスナー
+    if (clearAllMealRecordsButton) {
+        clearAllMealRecordsButton.addEventListener('click', handleClearAllMealRecords);
+    }
+
+    // ページロード時に記録をレンダリング
+    renderMealRecords();
+};
+
+// 食事フォーム送信ハンドラ
+const handleMealFormSubmit = (event) => {
+    event.preventDefault();
+
+    const date = mealDateInput.value;
+    const selectedMeals = Array.from(mealPlanList.querySelectorAll('input[name="meal"]:checked'))
+                               .map(checkbox => checkbox.value);
+    const mealCost = mealCostInput.value ? parseInt(mealCostInput.value) : 0;
+
+    if (!date) {
+        showMessage('日付は必須項目です。', 'error', 'mealMessage');
+        return;
+    }
+
+    // mainRecordsから該当日のレコードを取得または作成
+    let mainRecords = getRecords('mainRecords');
+    let targetMainRecord = mainRecords.find(record => record.date === date);
+
+    if (!targetMainRecord) {
+        // 該当日の主要記録がない場合は新規作成
+        targetMainRecord = {
+            date: date,
+            weight: null, bodyFat: null, muscleMass: null, waist: null,
+            meal: [],
+            exercise: [],
+            mealCost: 0
+        };
+        mainRecords.push(targetMainRecord);
+    }
+
+    // 食事内容を更新
+    targetMainRecord.meal = selectedMeals;
+    // 食事金額を加算（既存の金額に今回の金額を追加する）
+    targetMainRecord.mealCost = (targetMainRecord.mealCost || 0) + mealCost;
+
+    saveRecords('mainRecords', mainRecords);
+    showMessage('食事記録を保存しました！', 'success', 'mealMessage');
+    renderMealRecords();
+    mealTrackerForm.reset();
+    mealDateInput.value = new Date().toISOString().split('T')[0]; // 日付をリセット
+};
+
+// 食事記録のレンダリング
 export const renderMealRecords = () => {
-    const mealRecords = loadRecords(STORAGE_KEY_MEAL);
-    const dates = Object.keys(mealRecords).sort((a, b) => new Date(b) - new Date(a));
+    const mainRecords = getRecords('mainRecords').sort((a, b) => new Date(b.date) - new Date(a.date)); // 日付の新しい順
 
-    mealsTableBody.innerHTML = '';
-    if (dates.length === 0) {
+    mealsTableBody.innerHTML = ''; // テーブルをクリア
+
+    const mealRecordsForTable = [];
+    mainRecords.forEach(record => {
+        if (record.meal && record.meal.length > 0) {
+            mealRecordsForTable.push({
+                date: record.date,
+                mealContent: record.meal.join(', '),
+                cost: record.mealCost || 0
+            });
+        }
+    });
+
+    if (mealRecordsForTable.length === 0) {
         noMealTableRecordsMessage.style.display = 'block';
         clearAllMealRecordsButton.style.display = 'none';
     } else {
         noMealTableRecordsMessage.style.display = 'none';
         clearAllMealRecordsButton.style.display = 'block';
-        dates.forEach(date => {
-            const record = mealRecords[date];
-            const row = mealsTableBody.insertRow();
-            row.insertCell().textContent = date;
-            row.insertCell().textContent = record.meals && record.meals.length > 0 ? record.meals.join(', ') : '-';
-            row.insertCell().textContent = record.mealCost !== null ? `${record.mealCost.toLocaleString()}円` : '-';
 
-            const actionCell = row.insertCell();
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = '削除';
-            deleteButton.classList.add('delete-button');
-            deleteButton.addEventListener('click', () => {
-                deleteMealRecord(date);
-            });
-            actionCell.appendChild(deleteButton);
+        mealRecordsForTable.forEach(mealRecord => {
+            const row = mealsTableBody.insertRow();
+            row.insertCell().textContent = formatDate(mealRecord.date);
+            row.insertCell().textContent = mealRecord.mealContent;
+            row.insertCell().textContent = mealRecord.cost.toLocaleString();
+
+            const deleteCell = row.insertCell();
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '削除';
+            deleteBtn.classList.add('delete-button');
+            // 食事記録の削除は、mainRecordsの該当日の食事内容と金額をリセットする
+            deleteBtn.addEventListener('click', () => handleDeleteMealRecord(mealRecord.date));
+            deleteCell.appendChild(deleteBtn);
         });
     }
-    renderDailyMealCostSummary(); // 食事記録レンダリング後に合計金額も更新
+
+    renderDailyMealCostSummary(mainRecords);
 };
 
-/**
- * 個別の食事記録を削除する
- * @param {string} dateToDelete - 削除する日付
- */
-const deleteMealRecord = (dateToDelete) => {
-    if (confirm(`${dateToDelete} の食事記録を本当に削除しますか？`)) {
-        const mealRecords = loadRecords(STORAGE_KEY_MEAL);
-        delete mealRecords[dateToDelete];
-        saveRecords(STORAGE_KEY_MEAL, mealRecords);
-        renderMealRecords();
-        // グラフや他の画面の更新は、app.jsでまとめて呼び出すようにする
-        showMessage(mealMessageElement, '食事記録を削除しました。', 'info');
-    }
-};
-
-/**
- * 日ごとの食事合計金額をレンダリングする
- */
-const renderDailyMealCostSummary = () => {
-    const mealRecords = loadRecords(STORAGE_KEY_MEAL);
+// 日ごとの食事合計金額のレンダリング
+const renderDailyMealCostSummary = (mainRecords) => {
+    dailyCostSummaryDiv.innerHTML = '';
     const dailyCosts = {};
 
-    Object.keys(mealRecords).forEach(date => {
-        const record = mealRecords[date];
-        if (record.mealCost !== null && !isNaN(record.mealCost)) {
-            dailyCosts[date] = (dailyCosts[date] || 0) + record.mealCost;
+    mainRecords.forEach(record => {
+        if (record.mealCost) {
+            dailyCosts[record.date] = (dailyCosts[record.date] || 0) + record.mealCost;
         }
     });
 
-    const sortedDates = Object.keys(dailyCosts).sort((a, b) => new Date(b) - new Date(a));
-    dailyCostSummary.innerHTML = ''; // 初期化
+    const dates = Object.keys(dailyCosts).sort((a, b) => new Date(b) - new Date(a)); // 日付の新しい順
 
-    if (sortedDates.length === 0) {
+    if (dates.length === 0) {
         noDailyCostMessage.style.display = 'block';
     } else {
         noDailyCostMessage.style.display = 'none';
-        sortedDates.forEach(date => {
+        dates.forEach(date => {
             const p = document.createElement('p');
-            p.innerHTML = `${date}: <strong>${dailyCosts[date].toLocaleString()}</strong> 円`;
-            dailyCostSummary.appendChild(p);
+            p.innerHTML = `<strong>${formatDate(date)}:</strong> ${dailyCosts[date].toLocaleString()} 円`;
+            dailyCostSummaryDiv.appendChild(p);
         });
     }
 };
 
-/**
- * FOOD画面のイベントリスナーを設定する
- * @param {Function} updateChartCallback - グラフ更新のためのコールバック関数
- * @param {Function} renderMainRecordsCallback - HOME画面の記録再レンダリングのためのコールバック関数
- */
-export const setupFoodEventListeners = (updateChartCallback, renderMainRecordsCallback) => {
-    // 食事記録フォーム送信時の処理
-    mealTrackerForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+// 食事記録削除ハンドラ（mainRecordsの該当日の食事内容と金額をリセット）
+const handleDeleteMealRecord = (dateToDelete) => {
+    if (confirm(`日付: ${formatDate(dateToDelete)} の食事記録を削除してもよろしいですか？`)) {
+        let mainRecords = getRecords('mainRecords');
+        const targetRecord = mainRecords.find(record => record.date === dateToDelete);
 
-        const date = mealDateInput.value;
-        const selectedMeals = Array.from(mealPlanList.querySelectorAll('input[name="meal"]:checked'))
-                                 .map(checkbox => checkbox.value);
-        const mealCost = mealCostInput.value !== '' ? parseInt(mealCostInput.value, 10) : null;
-
-        if (!date) {
-            showMessage(mealMessageElement, '日付は必須項目です。', 'error');
-            return;
-        }
-
-        const mealRecords = loadRecords(STORAGE_KEY_MEAL);
-        mealRecords[date] = { meals: selectedMeals, mealCost: mealCost };
-        saveRecords(STORAGE_KEY_MEAL, mealRecords);
-        renderMealRecords();
-        if (typeof updateChartCallback === 'function') {
-            updateChartCallback();
-        }
-        if (typeof renderMainRecordsCallback === 'function') {
-            renderMainRecordsCallback(); // HOME画面のテーブルも更新
-        }
-        showMessage(mealMessageElement, '食事記録を保存しました！', 'success');
-
-        // フォームをクリア
-        mealCostInput.value = '';
-        mealPlanList.querySelectorAll('input[name="meal"]').forEach(checkbox => checkbox.checked = false);
-        mealDateInput.value = getFormattedToday(); // 日付を今日に戻す
-    });
-
-    // 全食事記録削除ボタンの処理
-    clearAllMealRecordsButton.addEventListener('click', () => {
-        if (confirm('全ての食事記録を削除してもよろしいですか？この操作は元に戻せません。')) {
-            localStorage.removeItem(STORAGE_KEY_MEAL);
+        if (targetRecord) {
+            targetRecord.meal = []; // 食事内容を空にする
+            targetRecord.mealCost = 0; // 食事金額を0にする
+            saveRecords('mainRecords', mainRecords);
+            showMessage('食事記録を削除しました。', 'info', 'mealMessage');
             renderMealRecords();
-            if (typeof updateChartCallback === 'function') {
-                updateChartCallback();
-            }
-            if (typeof renderMainRecordsCallback === 'function') {
-                renderMainRecordsCallback(); // HOME画面のテーブルも更新
-            }
-            showMessage(mealMessageElement, '全ての食事記録を削除しました。', 'info');
         }
-    });
+    }
+};
+
+// 全食事記録削除ハンドラ (mainRecordsの全ての食事内容と金額をリセット)
+const handleClearAllMealRecords = () => {
+    if (confirm('全ての食事記録を削除してもよろしいですか？この操作は取り消せません。')) {
+        let mainRecords = getRecords('mainRecords');
+        mainRecords.forEach(record => {
+            record.meal = [];
+            record.mealCost = 0;
+        });
+        saveRecords('mainRecords', mainRecords);
+        showMessage('全ての食事記録を削除しました。', 'info', 'mealMessage');
+        renderMealRecords();
+    }
 };

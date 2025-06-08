@@ -1,100 +1,136 @@
 // js/ui/homeUI.js
-import { loadRecords, saveRecords } from '../services/storageService.js';
-import { showMessage } from '../utils/messageUtils.js';
-import { getFormattedToday } from '../utils/dateUtils.js'; // 日付ユーティリティをインポート
+import { getRecords, saveRecords, deleteRecord, clearAllRecordsByType } from '../utils/storage.js';
+import { showMessage, formatDate } from '../utils/helpers.js';
 
-// === DOM要素の取得 ===
+// DOM要素の取得
 const trackerForm = document.getElementById('trackerForm');
 const dateInput = document.getElementById('date');
 const weightInput = document.getElementById('weight');
 const bodyFatInput = document.getElementById('bodyFat');
 const muscleMassInput = document.getElementById('muscleMass');
 const waistInput = document.getElementById('waist');
-const recordsTableBody = document.querySelector('#recordsTable tbody');
-const messageElement = document.getElementById('message');
+const recordsTableBody = document.getElementById('recordsTableBody');
 const clearAllRecordsButton = document.getElementById('clearAllRecords');
+const noLatestRecordMessage = document.getElementById('noLatestRecordMessage');
+const noTableRecordsMessage = document.getElementById('noTableRecordsMessage');
+
+// 最新記録のサマリー表示要素
 const summaryDate = document.getElementById('summaryDate');
 const summaryWeight = document.getElementById('summaryWeight');
 const summaryBodyFat = document.getElementById('summaryBodyFat');
 const summaryMuscleMass = document.getElementById('summaryMuscleMass');
 const summaryWaist = document.getElementById('summaryWaist');
-const noLatestRecordMessage = document.getElementById('noLatestRecordMessage');
-const noTableRecordsMessage = document.getElementById('noTableRecordsMessage');
 
-// === ローカルストレージのキー ===
-const STORAGE_KEY_MAIN = 'fitnessRecords';
-const STORAGE_KEY_MEAL = 'mealRecords'; // 食事記録も連携
-const STORAGE_KEY_EXERCISE = 'exerciseRecords'; // 運動記録も連携
+// 初期化関数
+export const initializeHome = () => {
+    // 今日の日付をデフォルト値としてセット
+    dateInput.value = new Date().toISOString().split('T')[0];
 
-// === 初期設定 ===
-dateInput.value = getFormattedToday(); // 今日の日付をセット
+    // フォーム送信イベントリスナー
+    if (trackerForm) {
+        trackerForm.addEventListener('submit', handleFormSubmit);
+    }
 
-/**
- * 主要記録一覧、最新記録サマリーをレンダリングする
- */
+    // 全削除ボタンイベントリスナー
+    if (clearAllRecordsButton) {
+        clearAllRecordsButton.addEventListener('click', handleClearAllRecords);
+    }
+
+    // ページロード時に記録をレンダリング
+    renderMainRecords();
+};
+
+// フォーム送信ハンドラ
+const handleFormSubmit = (event) => {
+    event.preventDefault();
+
+    const date = dateInput.value;
+    const weight = parseFloat(weightInput.value);
+    const bodyFat = bodyFatInput.value ? parseFloat(bodyFatInput.value) : null;
+    const muscleMass = muscleMassInput.value ? parseFloat(muscleMassInput.value) : null;
+    const waist = parseFloat(waistInput.value);
+
+    // 必須入力項目のチェック
+    if (!date || isNaN(weight) || isNaN(waist)) {
+        showMessage('日付、体重、ウエストは必須項目です。', 'error', 'message');
+        return;
+    }
+
+    const newRecord = {
+        date,
+        weight,
+        bodyFat,
+        muscleMass,
+        waist,
+        meal: [], // 食事記録は別途管理
+        exercise: [], // 運動記録は別途管理
+        mealCost: 0 // 食事金額は別途管理
+    };
+
+    let records = getRecords('mainRecords');
+    // 同じ日付の記録があれば更新、なければ追加
+    const existingIndex = records.findIndex(record => record.date === date);
+
+    if (existingIndex !== -1) {
+        // 既存の食事と運動の情報を保持して更新
+        const existingRecord = records[existingIndex];
+        newRecord.meal = existingRecord.meal || [];
+        newRecord.exercise = existingRecord.exercise || [];
+        newRecord.mealCost = existingRecord.mealCost || 0;
+        records[existingIndex] = newRecord;
+        showMessage('記録を更新しました！', 'success', 'message');
+    } else {
+        records.push(newRecord);
+        showMessage('記録を保存しました！', 'success', 'message');
+    }
+
+    saveRecords('mainRecords', records);
+    renderMainRecords();
+    trackerForm.reset();
+    dateInput.value = new Date().toISOString().split('T')[0]; // 日付をリセット
+};
+
+// 主要記録のレンダリング
 export const renderMainRecords = () => {
-    const records = loadRecords(STORAGE_KEY_MAIN);
-    const mealRecords = loadRecords(STORAGE_KEY_MEAL); // 食事記録も読み込む
-    const exerciseRecords = loadRecords(STORAGE_KEY_EXERCISE); // 運動記録も読み込む
+    const records = getRecords('mainRecords').sort((a, b) => new Date(b.date) - new Date(a.date)); // 日付の新しい順
 
-    const dates = Object.keys(records).sort((a, b) => new Date(b) - new Date(a)); // 日付で降順ソート
+    recordsTableBody.innerHTML = ''; // テーブルをクリア
 
-    // 記録一覧のレンダリング
-    recordsTableBody.innerHTML = '';
-    if (dates.length === 0) {
+    if (records.length === 0) {
         noTableRecordsMessage.style.display = 'block';
         clearAllRecordsButton.style.display = 'none';
     } else {
         noTableRecordsMessage.style.display = 'none';
         clearAllRecordsButton.style.display = 'block';
-        dates.forEach(date => {
-            const record = records[date];
-            const mealRecord = mealRecords[date];
-            const exerciseRecord = exerciseRecords[date];
 
+        records.forEach(record => {
             const row = recordsTableBody.insertRow();
-            row.insertCell().textContent = date;
-            row.insertCell().textContent = record.weight ? record.weight.toFixed(1) : '-';
+            row.insertCell().textContent = formatDate(record.date);
+            row.insertCell().textContent = record.weight !== null ? record.weight.toFixed(1) : '-';
             row.insertCell().textContent = record.bodyFat !== null ? record.bodyFat.toFixed(1) : '-';
             row.insertCell().textContent = record.muscleMass !== null ? record.muscleMass.toFixed(1) : '-';
-            row.insertCell().textContent = record.waist ? record.waist.toFixed(1) : '-';
+            row.insertCell().textContent = record.waist !== null ? record.waist.toFixed(1) : '-';
+            row.insertCell().textContent = record.meal && record.meal.length > 0 ? record.meal.join(', ') : '-';
+            row.insertCell().textContent = record.exercise && record.exercise.length > 0 ? record.exercise.join(', ') : '-';
+            row.insertCell().textContent = record.mealCost !== null ? record.mealCost.toLocaleString() : '-';
 
-            // 食事記録の表示（短縮形）
-            const mealSummary = mealRecord && mealRecord.meals && mealRecord.meals.length > 0
-                ? mealRecord.meals.map(m => m.charAt(0)).join('') // 例: 朝食,昼食 -> AD
-                : '-';
-            row.insertCell().textContent = mealSummary;
-
-            // 運動記録の表示（短縮形）
-            const exerciseSummary = exerciseRecord && exerciseRecord.exercises && exerciseRecord.exercises.length > 0
-                ? exerciseRecord.exercises.map(e => e.split('(')[0].charAt(0)).join('') // 例: ランニング(30分) -> R
-                : '-';
-            row.insertCell().textContent = exerciseSummary;
-
-            // 金額記録の表示
-            row.insertCell().textContent = mealRecord && mealRecord.mealCost !== null ? `${mealRecord.mealCost.toLocaleString()}円` : '-';
-
-
-            const actionCell = row.insertCell();
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = '削除';
-            deleteButton.classList.add('delete-button');
-            deleteButton.addEventListener('click', () => {
-                deleteMainRecord(date); // 主要記録のみ削除
-            });
-            actionCell.appendChild(deleteButton);
+            const deleteCell = row.insertCell();
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '削除';
+            deleteBtn.classList.add('delete-button');
+            deleteBtn.addEventListener('click', () => handleDeleteRecord(record.date));
+            deleteCell.appendChild(deleteBtn);
         });
     }
 
-    // 最新記録サマリーのレンダリング
-    if (dates.length > 0) {
-        const latestDate = dates[0]; // 最新の日付
-        const latestRecord = records[latestDate];
-        summaryDate.textContent = latestDate;
-        summaryWeight.textContent = latestRecord.weight ? latestRecord.weight.toFixed(1) : '-';
+    // 最新記録のサマリーを更新
+    if (records.length > 0) {
+        const latestRecord = records[0]; // 最新の記録はソート済み配列の最初の要素
+        summaryDate.textContent = formatDate(latestRecord.date);
+        summaryWeight.textContent = latestRecord.weight !== null ? latestRecord.weight.toFixed(1) : '-';
         summaryBodyFat.textContent = latestRecord.bodyFat !== null ? latestRecord.bodyFat.toFixed(1) : '-';
         summaryMuscleMass.textContent = latestRecord.muscleMass !== null ? latestRecord.muscleMass.toFixed(1) : '-';
-        summaryWaist.textContent = latestRecord.waist ? latestRecord.waist.toFixed(1) : '-';
+        summaryWaist.textContent = latestRecord.waist !== null ? latestRecord.waist.toFixed(1) : '-';
         noLatestRecordMessage.style.display = 'none';
     } else {
         summaryDate.textContent = '-';
@@ -106,71 +142,26 @@ export const renderMainRecords = () => {
     }
 };
 
-/**
- * 個別の主要記録を削除する
- * @param {string} dateToDelete - 削除する日付
- */
-const deleteMainRecord = (dateToDelete) => {
-    if (confirm(`${dateToDelete} の主要記録を本当に削除しますか？`)) {
-        const records = loadRecords(STORAGE_KEY_MAIN);
-        delete records[dateToDelete];
-        saveRecords(STORAGE_KEY_MAIN, records);
-        renderMainRecords(); // 主要記録のみ再レンダリング
-        // グラフや他の画面の更新は、app.jsでまとめて呼び出すようにする
-        showMessage(messageElement, '主要記録を削除しました。', 'info');
+// 記録削除ハンドラ
+const handleDeleteRecord = (dateToDelete) => {
+    if (confirm('この記録を削除してもよろしいですか？')) {
+        deleteRecord('mainRecords', dateToDelete);
+        showMessage('記録を削除しました。', 'info', 'message');
+        renderMainRecords();
     }
 };
 
-/**
- * HOME画面のイベントリスナーを設定する
- * @param {Function} updateChartCallback - グラフ更新のためのコールバック関数
- * @param {Function} renderOtherRecordsCallback - 他の記録（食事、運動）の再レンダリングのためのコールバック関数
- */
-export const setupHomeEventListeners = (updateChartCallback, renderOtherRecordsCallback) => {
-    // 主要記録フォーム送信時の処理
-    trackerForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        const date = dateInput.value;
-        const weight = parseFloat(weightInput.value);
-        const bodyFat = bodyFatInput.value !== '' ? parseFloat(bodyFatInput.value) : null;
-        const muscleMass = muscleMassInput.value !== '' ? parseFloat(muscleMassInput.value) : null;
-        const waist = parseFloat(waistInput.value);
-
-        if (!date || isNaN(weight) || isNaN(waist)) {
-            showMessage(messageElement, '日付、体重、ウエストは必須項目です。', 'error');
-            return;
-        }
-
-        const records = loadRecords(STORAGE_KEY_MAIN);
-        records[date] = { weight, bodyFat, muscleMass, waist };
-        saveRecords(STORAGE_KEY_MAIN, records);
+// 全主要記録削除ハンドラ
+const handleClearAllRecords = () => {
+    if (confirm('全ての主要記録を削除してもよろしいですか？この操作は取り消せません。')) {
+        clearAllRecordsByType('mainRecords');
+        showMessage('全ての主要記録を削除しました。', 'info', 'message');
         renderMainRecords();
-        if (typeof updateChartCallback === 'function') {
-            updateChartCallback();
-        }
-        showMessage(messageElement, '主要記録を保存しました！', 'success');
-
-        weightInput.value = '';
-        bodyFatInput.value = '';
-        muscleMassInput.value = '';
-        waistInput.value = '';
-        dateInput.value = getFormattedToday(); // 日付を今日に戻す
-    });
-
-    // 全主要記録削除ボタンの処理
-    clearAllRecordsButton.addEventListener('click', () => {
-        if (confirm('全ての主要記録を削除してもよろしいですか？この操作は元に戻せません。')) {
-            localStorage.removeItem(STORAGE_KEY_MAIN);
-            renderMainRecords();
-            if (typeof updateChartCallback === 'function') {
-                updateChartCallback();
-            }
-            showMessage(messageElement, '全ての主要記録を削除しました。', 'info');
-        }
-    });
-
-    // 各主要記録の削除ボタンのイベントリスナーは renderMainRecords 内で設定されるため、
-    // ここでまとめて設定する必要はないが、renderMainRecords が呼び出される度に再設定される点に注意。
-    // （今回はこれで問題ないが、大規模アプリではイベント委譲などを検討）
+    }
 };
+
+// 日付フォーマットの関数（helpers.jsからインポート済みだが、念のためここに記載）
+// function formatDate(dateString) {
+//     const options = { year: 'numeric', month: 'long', day: 'numeric' };
+//     return new Date(dateString).toLocaleDateString('ja-JP', options);
+// }
