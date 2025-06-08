@@ -2,206 +2,155 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Health Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ダイエット＆健康トラッカー</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Chart.js CDNの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="manifest" href="manifest.json">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- このバージョンではPWA Manifest、Service Worker、Google Iconsは使用しません -->
+    <!-- <link rel="manifest" href="manifest.json"> -->
+    <!-- <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"> -->
 </head>
 <body>
     <div class="container">
-        <header>
-            <div class="header-left">
-                <button id="menuButton" class="material-icons">menu</button>
+        <h1>Health Tracker</h1>
+
+        <!-- 最新の記録サマリー（カードデザイン） -->
+        <section class="card summary-card">
+            <h2>最新の記録</h2>
+            <div id="latestRecordSummary" class="summary-grid">
+                <div class="summary-item">
+                    <span class="summary-label">日付</span>
+                    <span id="summaryDate" class="summary-value">-</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">体重</span>
+                    <span id="summaryWeight" class="summary-value">-</span>
+                    <span class="summary-unit">kg</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">体脂肪率</span>
+                    <span id="summaryBodyFat" class="summary-value">-</span>
+                    <span class="summary-unit">%</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">筋肉量</span>
+                    <span id="summaryMuscleMass" class="summary-value">-</span>
+                    <span class="summary-unit">kg</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">ウエスト</span>
+                    <span id="summaryWaist" class="summary-value">-</span>
+                    <span class="summary-unit">cm</span>
+                </div>
             </div>
-            <h1 id="screenTitle">Health Tracker</h1>
-            <div class="header-right">
+            <p id="noLatestRecordMessage" class="no-records-message">まだ記録がありません。</p>
+        </section>
+
+        <!-- 記録入力フォーム（カードデザイン） -->
+        <section class="card record-form-card">
+            <h2>記録入力</h2>
+            <form id="trackerForm">
+                <div class="form-group">
+                    <label for="date">日付</label>
+                    <input type="date" id="date" required>
                 </div>
-        </header>
-
-        <nav id="sideMenu">
-            <ul>
-                <li><a href="#" class="menu-item active" data-screen="home"><span class="material-icons">home</span> HOME</a></li>
-                <li><a href="#" class="menu-item" data-screen="food"><span class="material-icons">restaurant</span> FOOD</a></li>
-                <li><a href="#" class="menu-item" data-screen="sport"><span class="material-icons">fitness_center</span> SPORT</a></li>
-                <li><a href="#" class="menu-item" data-screen="graph"><span class="material-icons">timeline</span> GRAPH</a></li>
-            </ul>
-        </nav>
-        <div id="overlay"></div>
-
-        <div id="message" class="message"></div>
-        <div id="mealMessage" class="message"></div>
-        <div id="exerciseMessage" class="message"></div>
-        <div id="graphMessage" class="message"></div>
-
-        <main class="screen-container">
-            <section id="homeScreen" class="screen active">
-                <div class="summary-section">
-                    <h3>最新記録</h3>
-                    <div id="noLatestRecordMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
-                    <p>日付: <strong id="summaryDate">-</strong></p>
-                    <p>体重: <strong id="summaryWeight">-</strong> kg</p>
-                    <p>体脂肪率: <strong id="summaryBodyFat">-</strong> %</p>
-                    <p>筋肉量: <strong id="summaryMuscleMass">-</strong> kg</p>
-                    <p>ウエスト: <strong id="summaryWaist">-</strong> cm</p>
+                <div class="form-group">
+                    <label for="weight">体重 (kg)</label>
+                    <input type="number" id="weight" step="0.1" placeholder="75.0" required>
                 </div>
-
-                <h2>主要記録</h2>
-                <form id="trackerForm">
-                    <label for="date">日付:</label>
-                    <input type="date" id="date" required><br>
-
-                    <label for="weight">体重 (kg):</label>
-                    <input type="number" id="weight" step="0.1" placeholder="例: 65.5" required><br>
-
-                    <label for="bodyFat">体脂肪率 (%):</label>
-                    <input type="number" id="bodyFat" step="0.1" placeholder="例: 20.0"><br>
-
-                    <label for="muscleMass">筋肉量 (kg):</label>
-                    <input type="number" id="muscleMass" step="0.1" placeholder="例: 45.0"><br>
-
-                    <label for="waist">ウエスト (cm):</label>
-                    <input type="number" id="waist" step="0.1" placeholder="例: 75.0" required><br>
-
-                    <button type="submit">記録を保存</button>
-                </form>
-
-                <h3>主要記録一覧</h3>
-                <div id="noTableRecordsMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>日付</th>
-                                <th>体重(kg)</th>
-                                <th>体脂肪率(%)</th>
-                                <th>筋肉量(kg)</th>
-                                <th>ウエスト(cm)</th>
-                                <th>食事</th>
-                                <th>運動</th>
-                                <th>金額</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recordsTableBody">
-                            </tbody>
-                    </table>
+                <div class="form-group">
+                    <label for="bodyFat">体脂肪率 (%)</label>
+                    <input type="number" id="bodyFat" step="0.1" placeholder="20.5">
                 </div>
-                <button id="clearAllRecords" class="clear-button">全ての主要記録を削除</button>
-            </section>
-
-            <section id="foodScreen" class="screen">
-                <h2>食事記録</h2>
-                <form id="mealTrackerForm">
-                    <label for="mealDate">日付:</label>
-                    <input type="date" id="mealDate" required><br>
-
-                    <div class="checkbox-group" id="mealPlanList">
-                        <p>今日の食事を選択:</p>
-                        <label><input type="checkbox" name="meal" value="朝食"> 朝食</label>
-                        <label><input type="checkbox" name="meal" value="昼食"> 昼食</label>
-                        <label><input type="checkbox" name="meal" value="夕食"> 夕食</label>
-                        <label><input type="checkbox" name="meal" value="間食"> 間食</label>
+                <div class="form-group">
+                    <label for="muscleMass">筋肉量 (kg)</label>
+                    <input type="number" id="muscleMass" step="0.1" placeholder="55.2">
+                </div>
+                <div class="form-group">
+                    <label for="waist">ウエスト (cm)</label>
+                    <input type="number" id="waist" step="0.1" placeholder="92.0" required>
+                </div>
+                <!-- 食事プラン、運動プラン、金額記録は一旦削除し、シンプルに -->
+                <!-- <div class="form-group">
+                    <label>食事プラン</label>
+                    <div id="mealPlanList" class="checklist">
+                        <label><input type="checkbox" name="meal" value="breakfast"> 朝食</label>
+                        <label><input type="checkbox" name="meal" value="lunch"> 昼食</label>
+                        <label><input type="checkbox" name="meal" value="dinner"> 夕食</label>
+                        <label><input type="checkbox" name="meal" value="snack"> 間食</label>
                     </div>
-
-                    <label for="mealCost">食事金額 (円):</label>
-                    <input type="number" id="mealCost" step="1" placeholder="例: 1500"><br>
-
-                    <button type="submit">食事記録を保存</button>
-                </form>
-
-                <div class="summary-section">
-                    <h3>日ごとの食事合計金額</h3>
-                    <div id="noDailyCostMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
-                    <div id="dailyCostSummary">
-                        </div>
                 </div>
-
-                <h3>食事記録一覧</h3>
-                <div id="noMealTableRecordsMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>日付</th>
-                                <th>食事内容</th>
-                                <th>金額(円)</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="mealsTableBody">
-                            </tbody>
-                    </table>
+                <div class="form-group">
+                    <label for="mealCost">食事にかかった金額 (円)</label>
+                    <input type="number" id="mealCost" step="1" placeholder="例: 1500">
                 </div>
-                <button id="clearAllMealRecords" class="clear-button">全ての食事記録を削除</button>
-            </section>
-
-            <section id="sportScreen" class="screen">
-                <h2>運動記録</h2>
-                <form id="exerciseTrackerForm">
-                    <label for="exerciseDate">日付:</label>
-                    <input type="date" id="exerciseDate" required><br>
-
-                    <div class="checkbox-group" id="exercisePlanList">
-                        <p>今日の運動を選択:</p>
-                        <label><input type="checkbox" name="exercise" value="ウォーキング(30分)"> ウォーキング(30分)</label>
-                        <label><input type="checkbox" name="exercise" value="ジョギング(30分)"> ジョギング(30分)</label>
-                        <label><input type="checkbox" name="exercise" value="筋トレ(上半身)"> 筋トレ(上半身)</label>
-                        <label><input type="checkbox" name="exercise" value="筋トレ(下半身)"> 筋トレ(下半身)</label>
-                        <label><input type="checkbox" name="exercise" value="ストレッチ(20分)"> ストレッチ(20分)</label>
-                        <label><input type="checkbox" name="exercise" value="水泳(45分)"> 水泳(45分)</label>
+                <div class="form-group">
+                    <label>運動プラン</label>
+                    <div id="exercisePlanList" class="checklist">
+                        <label><input type="checkbox" name="exercise" value="running"> ランニング (30分)</label>
+                        <label><input type="checkbox" name="exercise" value="weightTraining"> 筋トレ (全身)</label>
+                        <label><input type="checkbox" name="exercise" value="stretching"> ストレッチ (20分)</label>
                     </div>
+                </div> -->
+                <button type="submit" class="button primary-button">記録する</button>
+            </form>
+            <p id="message" class="message"></p>
+        </section>
 
-                    <button type="submit">運動記録を保存</button>
-                </form>
-
-                <h3>運動記録一覧</h3>
-                <div id="noExerciseTableRecordsMessage" class="no-data-message" style="display: none;">まだ記録がありません。</div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>日付</th>
-                                <th>運動内容</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="exercisesTableBody">
-                            </tbody>
-                    </table>
-                </div>
-                <button id="clearAllExerciseRecords" class="clear-button">全ての運動記録を削除</button>
-            </section>
-
-            <section id="graphScreen" class="screen">
-                <h2>記録グラフ</h2>
-                <div class="chart-controls">
+        <!-- グラフ表示 -->
+        <section class="card chart-card">
+            <h2>推移グラフ</h2>
+            <div class="chart-controls">
+                <div class="chart-control-group">
                     <label for="chartType">表示項目:</label>
                     <select id="chartType">
                         <option value="weight">体重</option>
+                        <option value="waist">ウエスト</option>
                         <option value="bodyFat">体脂肪率</option>
                         <option value="muscleMass">筋肉量</option>
-                        <option value="waist">ウエスト</option>
-                        <option value="mealCost">食事金額</option>
+                        <!-- <option value="mealCost">食事金額</option> -->
                     </select>
-
+                </div>
+                <div class="chart-control-group">
                     <label for="chartPeriod">期間:</label>
                     <select id="chartPeriod">
+                        <option value="all">全期間</option>
                         <option value="7days">過去7日</option>
                         <option value="30days">過去30日</option>
                         <option value="90days">過去90日</option>
-                        <option value="all">全期間</option>
                     </select>
                 </div>
-                <div class="chart-container">
-                    <canvas id="myChart"></canvas>
-                    <div id="noChartDataMessage" class="no-data-message" style="display: none;">データが不足しているため、グラフを表示できません。</div>
-                </div>
-            </section>
-        </main>
+            </div>
+            <canvas id="myChart"></canvas>
+            <p id="noChartDataMessage" class="no-records-message">グラフ表示のためのデータがありません。</p>
+        </section>
+
+        <!-- 記録一覧 -->
+        <section class="card record-list-card">
+            <h2>記録一覧</h2>
+            <div id="recordTableContainer">
+                <table id="recordsTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>体重</th>
+                            <th>体脂肪率</th>
+                            <th>筋肉量</th>
+                            <th>ウエスト</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 記録データがここに挿入されます -->
+                    </tbody>
+                </table>
+                <p id="noTableRecordsMessage" class="no-records-message">まだ記録がありません。</p>
+            </div>
+            <button id="clearAllRecords" class="button danger-button">全記録削除</button>
+        </section>
     </div>
 
-    <script type="module" src="js/app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
